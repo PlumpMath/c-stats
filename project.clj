@@ -9,7 +9,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2371" :scope "provided"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [com.cognitect/transit-cljs "0.8.192"]
+                 [devcards "0.1.2-SNAPSHOT"]
                  [ring "1.3.1"]
                  [compojure "1.2.0"]
                  [enlive "1.1.5"]
@@ -32,8 +32,8 @@
                              :compiler {:output-to     "resources/public/js/app.js"
                                         :output-dir    "resources/public/js/out"
                                         :source-map    "resources/public/js/out.js.map"
-                                        :preamble      ["react/react.min.js"]
-                                        :externs       ["react/externs/react.js"]
+                                        :preamble      ["react/react_with_addons.min.js"]
+                                        :externs       ["react/externs/react_with_addons.js"]
                                         :optimizations :none
                                         :pretty-print  true}}}}
 

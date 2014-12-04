@@ -8,7 +8,7 @@
 
 (enable-console-print!)
 
-(defonce app-state (atom {:athlete {} :activities [] :filters []}))
+(defonce app-state (atom {:athlete {} :activities []}))
 
 (defn request
   [uri]
@@ -38,10 +38,9 @@
 
 (defn request-laps
   [activity-id]
-  (request (str
-             "https://www.strava.com/api/v3/activities/"
-             activity-id
-             "/laps")))
+  (request (str "https://www.strava.com/api/v3/activities/"
+                activity-id
+                "/laps")))
 
 (defn athlete-view [athlete owner]
   (reify
@@ -77,34 +76,31 @@
                             (om/set-state! owner :value val)))})
         (dom/span nil (om/get-state owner :value))))))
 
-(defn analyze-power [{:keys [target-watts interval-count laps]}]
-  (let [result (filter (fn [current]
-                         (> (:average_watts current) target-watts))
-                       laps)
+(defn analyzer [{:keys [target interval-count laps type interval-operator out]}]
+  (let [accessor (case type
+                    "watts" :average_watts
+                    "mph"   :average_speed
+                    "rpm"   :average_cadence
+                    "bpm"   :average_heartrate)
+        op (case interval-operator
+             "or more" >
+             "or less" <)
+        result (filter (fn [current] (op (accessor current) target)) laps)
         reason (str (count result) " of " interval-count
-                    " expected intervals attained a target of " target-watts
-                    " watts.")]
-    (if (< (count result) interval-count)
-      {:status :fail
-       :reason reason}
-      {:status :success
-       :reason reason})))
-
-(defn analyze-ride
-  "Analyze a ride and return the analysis via core.async channel"
-  [{:keys [interval-type interval-value interval-count laps]}]
-  (let [out (chan)
-        res (if (= interval-type "watts")
-              (analyze-power {:target-watts interval-value
-                              :interval-count interval-count
-                              :laps laps}))]
-    (put! out res)
+                    " expected intervals attained a target of " target
+                    " " type " " interval-operator ".")
+        return-result (if (< (count result) interval-count)
+                        {:status :fail
+                         :reason reason}
+                        {:status :success
+                         :reason reason})]
+    (put! out return-result)
     out))
 
 (defn plan-view [activity-id owner]
   (reify
     om/IRenderState
-    (render-state [this {:keys [analysis]}]
+    (render-state [this {:keys [analysis-chan]}]
       (dom/form nil
         (dom/div nil
           (dom/span nil "I expect")
@@ -116,7 +112,10 @@
           (dom/div #js {:ref "slider-container"}
             (om/build slider [0 500 10] {:init-state {:value 50}}))
           (apply dom/select #js {:ref "interval-type"}
-            (map (fn [type] (dom/option nil type)) ["watts" "rpm" "mph" "bpm"])))
+            (map (fn [type] (dom/option nil type)) ["watts" "rpm" "mph" "bpm"]))
+          (dom/select #js {:ref "interval-operator"}
+            (dom/option #js {:selected true} "or more")
+            (dom/option nil "or less")))
         (dom/button #js {:className "big-bertha"
                          :onClick
                          (fn [e]
@@ -127,31 +126,32 @@
                                      slider-container (om/get-node owner "slider-container")
                                      interval-value (. (.querySelector slider-container "input") -value)
                                      interval-count (. (om/get-node owner "interval-count") -value)
+                                     interval-operator (. (om/get-node owner "interval-operator") -value)
                                      interval-type (. (om/get-node owner "interval-type") -value)]
-                             (go
-                               (let [analysis-result (<! (analyze-ride {:laps laps
-                                              :interval-type interval-type
-                                              :interval-value interval-value
-                                              :interval-count interval-count}))]
-                                 (put! analysis analysis-result))))))}
+                                (analyzer {:laps laps
+                                           :interval-operator interval-operator
+                                           :type interval-type
+                                           :target interval-value
+                                           :interval-count interval-count
+                                           :out analysis-chan}))))}
                       "Analyze ride")))))
 
 (defn activity-view [activity owner]
   (reify
     om/IInitState
     (init-state [_]
-      {:analysis (chan)
+      {:analysis-chan (chan)
        :status :pending
        :message "Ride not analyzed yet."})
     om/IWillMount
     (will-mount [_]
-      (let [analysis (om/get-state owner :analysis)]
+      (let [analysis-chan (om/get-state owner :analysis-chan)]
         (go (while true
-          (let [analysis-result (<! analysis)]
+          (let [analysis-result (<! analysis-chan)]
             (om/set-state! owner :status (:status analysis-result))
             (om/set-state! owner :message (:reason analysis-result)))))))
     om/IRenderState
-    (render-state [this {:keys [analysis]}]
+    (render-state [this {:keys [analysis-chan]}]
       (let [color (case (om/get-state owner :status)
                     :pending "rgba(255, 255, 0, 0.1)"
                     :success "rgba(0, 255, 0, 0.1)"
@@ -166,24 +166,7 @@
                         :target "_blank"}
                    (:name activity))
             (dom/p nil (:start_date_local activity)))
-          (om/build plan-view (:id activity) {:init-state {:analysis analysis}}))))))
-
-(defn filter-data
-  "Filter data based on arg given"
-  [type activities]
-  (case type
-    :distance (om/update! activities (filter #(> (:distance %) 40000) activities))
-    :cadence (om/update! activities (filter #(> (:average_cadence %) 90) activities))))
-
-(defn filters-view [activities owner]
-  (reify
-    om/IRender
-    (render [_]
-      (dom/div #js {:className "filter-button-container"}
-        (dom/button #js {:onClick #(filter-data :distance activities)}
-                    "Long rides only")
-        (dom/button #js {:onClick #(filter-data :cadence activities)}
-                    "High cadence rides only")))))
+          (om/build plan-view (:id activity) {:init-state {:analysis-chan analysis-chan}}))))))
 
 (defn main-view [app owner]
   (reify
@@ -195,7 +178,6 @@
     (render [_]
       (dom/div nil
         (om/build athlete-view (:athlete app))
-        (om/build filters-view (:activities app))
         (apply css-trans-group #js {:transitionName "example"}
           (om/build-all activity-view (:activities app)))))))
 
