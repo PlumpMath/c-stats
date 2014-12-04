@@ -113,8 +113,9 @@
             (om/build slider [0 500 10] {:init-state {:value 50}}))
           (apply dom/select #js {:ref "interval-type"}
             (map (fn [type] (dom/option nil type)) ["watts" "rpm" "mph" "bpm"]))
-          (dom/select #js {:ref "interval-operator"}
-            (dom/option #js {:selected true} "or more")
+          (dom/select #js {:ref "interval-operator"
+                           :defaultValue "or more"}
+            (dom/option nil "or more")
             (dom/option nil "or less")))
         (dom/button #js {:className "big-bertha"
                          :onClick
