@@ -42,23 +42,35 @@
                 activity-id
                 "/laps")))
 
+(defn rand-color [opacity]
+  (str "rgba(" (rand-int 256) ","
+               (rand-int 256) ","
+               (rand-int 256) "," opacity ")"))
+
 (defn athlete-view [athlete owner]
   (reify
     om/IRender
     (render [_]
-      (dom/div nil
-        (dom/a #js {:href (str "http://www.strava.com/athletes/" (:id athlete))
-                    :target "_blank"
-                    :className "profile-container"}
-          (dom/h2 #js {:style #js {:display "inline-block"
-                                   :font-weight "normal"}}
-                  (:firstname athlete))
-          (dom/h2 #js {:style #js {:display "inline-block"
-                                   :font-weight "bold"}}
-                  (:lastname athlete))
-          (dom/figure #js {:className "avatar-container"}
-            (dom/img #js {:src (:profile athlete)
-                          :style #js {:display "block"}})))))))
+      (dom/div #js {:className "profile-container"}
+        (dom/div #js {:className "border-container"}
+          (dom/span #js {:className "border-piece"
+                         :style #js {:backgroundColor (rand-color 0.4)}})
+          (dom/span #js {:className "border-piece"
+                         :style #js {:backgroundColor (rand-color 0.4)}})
+          (dom/span #js {:className "border-piece"
+                         :style #js {:backgroundColor (rand-color 0.4)}})
+          (dom/span #js {:className "border-piece"
+                         :style #js {:backgroundColor (rand-color 0.4)}})
+          (dom/span #js {:className "border-piece"
+                         :style #js {:backgroundColor (rand-color 0.4)}}))
+        (dom/div #js {:className "inner-container"}
+          (dom/h2 #js {:className "athlete-name"} (:firstname athlete))
+          (dom/h2 #js {:className "athlete-name"} (:lastname athlete))
+          (dom/span #js {:style #js {:display "block"}}
+            (dom/a #js {:href (str "http://www.strava.com/athletes/" (:id athlete))
+                        :target "_blank"}
+              (dom/figure #js {:className "avatar-container"}
+                (dom/img #js {:src (:profile athlete)})))))))))
 
 (defn slider [[min max step] owner]
   (reify

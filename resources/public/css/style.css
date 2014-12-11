@@ -12,19 +12,47 @@ h1 {
   text-decoration: underline;
 }
 .profile-container {
-  display: inline-block;
-  cursor: pointer;
-  color: inherit;
+  display: block;
+  position: relative;
+  padding-bottom: 10px;
 }
-.profile-container:hover .avatar-container {
+.profile-container .border-container {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+}
+.border-container .border-piece {
+  width: calc(20%);
+  height: 4px;
+  float: right;
+}
+.profile-container .inner-container {
+  width: 300px;
+  margin: 0 auto;
+  text-align: center;
+}
+.avatar-container:hover {
   transform: scale(1.05);
 }
+.athlete-name {
+  display: inline-block;
+  text-decoration: none;
+  margin-right: 0.25em;
+}
 .avatar-container {
+  display: inline-block;
   border-radius: 50%;
   overflow: hidden;
   margin: 0;
   border: 3px solid #aaa;
   transition: transform 0.3s ease-out;
+}
+.avatar-container > img {
+  width: 75px;
+  height: auto;
+  display: block;
 }
 .example-enter {
   opacity: 0;
